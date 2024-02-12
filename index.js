@@ -1,5 +1,32 @@
+import './styles.css';
+
 import { initializeApp } from 'firebase/app';
-import { getStorage, ref, uploadBytes, getDownloadURL } from "firebase/storage";
+
+import {
+    getStorage,
+    ref,
+    uploadBytes,
+    getDownloadURL
+} from "firebase/storage";
+
+import { 
+    getAuth,
+    onAuthStateChanged, 
+    signOut,
+    createUserWithEmailAndPassword,
+    signInWithEmailAndPassword,
+} from 'firebase/auth';
+  
+
+import { 
+  hideLoginError, 
+  showLoginState, 
+  showLoginForm, 
+  showApp, 
+  showLoginError, 
+  btnLogin,
+  btnSignup,
+} from './ui'
 
 const firebaseConfig = {
     apiKey: "AIzaSyAqgo2C6IUmsOrDBPvRwoxPv9gerO7PW-4",
@@ -8,20 +35,23 @@ const firebaseConfig = {
     storageBucket: "phlex-exercises.appspot.com",
     messagingSenderId: "785102649818",
     appId: "1:785102649818:web:c81d2e5bbb116f885d28e3",
-    databaseURL: "https://phlex-exercises-default-rtdb.europe-west1.firebasedatabase.app",
     storageBucket: "gs://phlex-exercises.appspot.com",
 };
 // Initialize Firebase
 const app = initializeApp(firebaseConfig);
 const storage = getStorage(app);
-
+const auth = getAuth(app);
 
 window.uploadFile = (jsonString, exercisePath) => {
-    var blob = new Blob([jsonString]);
-    var storageRef = ref(storage, 'Exercises/' + exercisePath);
-    uploadBytes(storageRef, blob).then((snapshot) => {
-        console.log('Uploaded an array!');
-    });
+    return new Promise((resolve, reject) => {
+        var blob = new Blob([jsonString]);
+        var storageRef = ref(storage, 'Exercises/' + exercisePath);
+        uploadBytes(storageRef, blob).then((snapshot) => {
+            resolve("Uploaded exercise");
+        }).catch((error) => {
+            reject("Upload failed");
+        })
+    })
 }
 
 window.downloadFile = (path) => {
@@ -41,6 +71,68 @@ window.downloadFile = (path) => {
             })
     })
 }
+
+////////////////////////////////////AUTH Start//////////////////////////////////////////
+const loginEmailPassword = async () => {
+    const loginEmail = txtEmail.value
+    const loginPassword = txtPassword.value
+  
+    // step 1: try doing this w/o error handling, and then add try/catch
+    await signInWithEmailAndPassword(auth, loginEmail, loginPassword)
+  
+    // step 2: add error handling
+    // try {
+    //   await signInWithEmailAndPassword(auth, loginEmail, loginPassword)
+    // }
+    // catch(error) {
+    //   console.log(`There was an error: ${error}`)
+    //   showLoginError(error)
+    // }
+  }
+  
+  // Create new account using email/password
+  const createAccount = async () => {
+      const email = txtEmail.value;
+      const password = txtPassword.value;
+  
+    try {
+        await createUserWithEmailAndPassword(auth, email, password);
+    }
+    catch(error) {
+        console.log(`There was an error: ${error}`);
+        showLoginError(error);
+    } 
+  }
+  
+  // Monitor auth state
+  const monitorAuthState = async () => {
+    onAuthStateChanged(auth, user => {
+      if (user) {
+          console.log(user);
+          loadUnityInstance();
+          showApp();
+          showLoginState(user);
+  
+          hideLoginError();
+          hideLinkError();
+      }
+      else {
+          showLoginForm();
+      }
+    })
+  }
+  
+  // Log out
+  const logout = async () => {
+    await signOut(auth);
+  }
+  
+btnLogin.addEventListener("click", loginEmailPassword) 
+btnSignup.addEventListener("click", createAccount)
+
+monitorAuthState();
+  
+////////////////////////////////////AUTH END//////////////////////////////////////////
 
 window.addEventListener("load", function () {
     if ("serviceWorker" in navigator) {
@@ -108,16 +200,18 @@ if (/iPhone|iPad|iPod|Android/i.test(navigator.userAgent)) {
 
 loadingBar.style.display = "block";
 
-var script = document.createElement("script");
-script.src = loaderUrl;
-script.onload = () => {
-    createUnityInstance(canvas, config, (progress) => {
-        progressBarFull.style.width = 100 * progress + "%";
-    }).then((unityInstance) => {
-        window.unityInstance = unityInstance;
-        loadingBar.style.display = "none";
-    }).catch((message) => {
-        alert(message);
-    });
-};
-document.body.appendChild(script);
+function loadUnityInstance() {
+    var script = document.createElement("script");
+    script.src = loaderUrl;
+    script.onload = () => {
+        createUnityInstance(canvas, config, (progress) => {
+            progressBarFull.style.width = 100 * progress + "%";
+        }).then((unityInstance) => {
+            window.unityInstance = unityInstance;
+            loadingBar.style.display = "none";
+        }).catch((message) => {
+            alert(message);
+        });
+    };
+    document.body.appendChild(script);
+}
