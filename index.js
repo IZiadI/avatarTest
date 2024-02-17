@@ -25,17 +25,16 @@ import {
   showApp, 
   showLoginError, 
   btnLogin,
-  btnSignup,
 } from './ui'
 
 const firebaseConfig = {
-    apiKey: "AIzaSyAqgo2C6IUmsOrDBPvRwoxPv9gerO7PW-4",
-    authDomain: "phlex-exercises.firebaseapp.com",
-    projectId: "phlex-exercises",
-    storageBucket: "phlex-exercises.appspot.com",
-    messagingSenderId: "785102649818",
-    appId: "1:785102649818:web:c81d2e5bbb116f885d28e3",
-    storageBucket: "gs://phlex-exercises.appspot.com",
+    apiKey: "AIzaSyDWvuxuXutLo1FJuTEvxc5earHo2T20dFs",
+    authDomain: "phlex-d0508.firebaseapp.com",
+    projectId: "phlex-d0508",
+    storageBucket: "phlex-d0508.appspot.com",
+    messagingSenderId: "310184582416",
+    appId: "1:310184582416:web:a32a52988ba2874e46d995", 
+    measurementId: "G-H5VLZFY9E2"  
 };
 // Initialize Firebase
 const app = initializeApp(firebaseConfig);
@@ -77,33 +76,18 @@ const loginEmailPassword = async () => {
     const loginEmail = txtEmail.value
     const loginPassword = txtPassword.value
   
-    // step 1: try doing this w/o error handling, and then add try/catch
-    await signInWithEmailAndPassword(auth, loginEmail, loginPassword)
+    // // step 1: try doing this w/o error handling, and then add try/catch
+    // await signInWithEmailAndPassword(auth, loginEmail, loginPassword)
   
     // step 2: add error handling
-    // try {
-    //   await signInWithEmailAndPassword(auth, loginEmail, loginPassword)
-    // }
-    // catch(error) {
-    //   console.log(`There was an error: ${error}`)
-    //   showLoginError(error)
-    // }
-  }
-  
-  // Create new account using email/password
-  const createAccount = async () => {
-      const email = txtEmail.value;
-      const password = txtPassword.value;
-  
     try {
-        await createUserWithEmailAndPassword(auth, email, password);
+      await signInWithEmailAndPassword(auth, loginEmail, loginPassword)
     }
     catch(error) {
-        console.log(`There was an error: ${error}`);
-        showLoginError(error);
-    } 
+      console.log(`There was an error: ${error}`)
+      showLoginError(error)
+    }
   }
-  
   // Monitor auth state
   const monitorAuthState = async () => {
     onAuthStateChanged(auth, user => {
@@ -128,7 +112,6 @@ const loginEmailPassword = async () => {
   }
   
 btnLogin.addEventListener("click", loginEmailPassword) 
-btnSignup.addEventListener("click", createAccount)
 
 monitorAuthState();
   
