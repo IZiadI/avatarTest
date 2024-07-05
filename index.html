@@ -9,25 +9,6 @@
     <link rel="manifest" href="manifest.webmanifest">
   </head>
   <body>
-    <div id="login">
-      <div class="header">
-        <h1>Please login to use the exercise editor</h1>
-      </div>
-      <form>
-        <div class="group">
-          <input id="txtEmail" type="email">
-          <label>Email</label>
-        </div>
-        <div class="group">
-          <input id="txtPassword" type="password">
-          <label>Password</label>
-        </div>
-        <div id="divLoginError" class="group">
-          <div id="lblLoginErrorMessage" class="errorlabel">Error message</div>
-        </div>
-        <button id="btnLogin" type="button" class="button buttonBlue">Log in</button>
-      </form>
-    </div>
     <div id="unity-container">
       <canvas id="unity-canvas" width=600 height=600 tabindex="-1"></canvas>
       <div id="unity-loading-bar">
@@ -37,6 +18,11 @@
         </div>
       </div>
       <div id="unity-warning"> </div>
+    </div>
+    <div>
+      <button id="LoadAnimationButton" onclick="window.loadAnimationFromFirestoreDoc()">LoadAnimationButton</button>
+      <b id="pathText">authenticatedExercises/AirSquat/AnimationData</b>
+      <b id="firestoreDocPath"></b>
     </div>
     <script src="dist/bundle.js"></script>
   </body>

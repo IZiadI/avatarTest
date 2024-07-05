@@ -1,51 +1,233 @@
-import './styles.css';
+import '/styles.css';
 
 import { initializeApp } from 'firebase/app';
+import { getFirestore, doc, setDoc, updateDoc, getDoc } from "firebase/firestore";
 
 import {
     getStorage,
     ref,
     uploadBytes,
-    getDownloadURL
+    getDownloadURL,
 } from "firebase/storage";
 
 import { 
     getAuth,
     onAuthStateChanged, 
     signOut,
-    createUserWithEmailAndPassword,
     signInWithEmailAndPassword,
 } from 'firebase/auth';
   
 
 import { 
-  hideLoginError, 
-  showLoginState, 
-  showLoginForm, 
   showApp, 
-  showLoginError, 
-  btnLogin,
 } from './ui'
 
+// Get the query string from the current URL
+var queryString = window.location.search;
+
+// Now you can use the parseQueryString function from the previous example to parse the query string into a dictionary
+var params = parseQueryString(queryString);
+
+window.isAppReady = false;
+window.isExercisePending = false;
+
+var exerciseCopied = false;
+
+var exerciseData = {
+    animation: null,
+    image: [0,0],
+    mediapipeData: null,
+}
+
 const firebaseConfig = {
-    apiKey: "AIzaSyDWvuxuXutLo1FJuTEvxc5earHo2T20dFs",
-    authDomain: "phlex-d0508.firebaseapp.com",
-    projectId: "phlex-d0508",
-    storageBucket: "phlex-d0508.appspot.com",
-    messagingSenderId: "310184582416",
-    appId: "1:310184582416:web:a32a52988ba2874e46d995", 
-    measurementId: "G-H5VLZFY9E2"  
+    apiKey: "*********",
+    authDomain: "*********",
+    projectId: "*********",
+    storageBucket: "*********",
+    messagingSenderId: "*********",
+    appId: "*********", 
+    measurementId: "*********" 
 };
 // Initialize Firebase
 const app = initializeApp(firebaseConfig);
 const storage = getStorage(app);
 const auth = getAuth(app);
+const firestore = getFirestore(app);
+const exercisePathText = document.getElementById("pathText");
 
-window.uploadFile = (jsonString, exercisePath) => {
+function updateDocRef()
+{
+    docRef = doc(firestore, document.getElementById("firestoreDocPath").innerHTML);
+}
+
+async function getExercisePathFromFirestoreDoc()
+{
+    var docSnap = await getDoc(docRef);
+
+    if (docSnap.exists()) {
+        var animationPath = docSnap.data()["animation"];
+        if (animationPath) {
+            animationPath = animationPath.substring(animationPath.indexOf('Exercises/') + 10);
+            return animationPath;
+        }
+        else
+        {
+            return null;
+        }
+      } else {
+        // docSnap.data() will be undefined in this case
+        console.log("No such document!");
+        await setDoc(docRef, {
+            
+        });
+        return null;
+    }
+}
+
+window.onLoadAnimationButtonClick = () => {
+    if (window.isAppReady)
+    {
+        loadAnimation();
+    }
+    else
+    {
+        isExercisePending = true;
+    }
+}
+
+window.loadAnimationFromFirestoreDoc = () => {
+    updateDocRef();
+    getExercisePathFromFirestoreDoc().then((path) => {
+        if (path == null)
+            return;
+        exercisePathText.innerHTML = path;
+        window.onLoadAnimationButtonClick();
+    });
+}
+
+function parseQueryString(queryString) {
+    var params = {};
+    var queryStringWithoutQuestionMark = queryString.substring(1); // Remove the leading '?'
+    var keyValuePairs = queryStringWithoutQuestionMark.split('&'); // Split the query string into key-value pairs
+
+    keyValuePairs.forEach(function(keyValuePair) {
+        var pair = keyValuePair.split('='); // Split each key-value pair
+        var key = decodeURIComponent(pair[0]); // Decode the key
+        var value = decodeURIComponent(pair[1] || ''); // Decode the value (if it exists)
+
+        if (key.length) {
+            if (params[key]) {
+                if (Array.isArray(params[key])) {
+                    params[key].push(value);
+                } else {
+                    params[key] = [params[key], value];
+                }
+            } else {
+                params[key] = value; // Store the key-value pair in the params object
+            }
+        }
+    });
+
+    return params;
+}
+
+window.updateFireStoreDoc = (exerciseData) => {
+    if (!params["firestoreDoc"])
+        return;
+    var newExercisePath = doc(firestore, params["firestoreDoc"]);
+    const docData = {
+        animation: exercisePath,
+    };
+    updateDoc(newExercisePath, docData);
+}
+
+function updateFirestoreData()
+{
+    updateDoc(docRef, exerciseData);
+    exerciseData = {
+        animation: null,
+        image: [0,0],
+        mediapipeData: null,
+    }
+    exerciseCopied = false;
+}
+
+async function copyFireStoreDoc(newPath)
+{
+    var docSnap = await getDoc(docRef);
+    const newDocRef = doc(firestore, newPath);
+
+    if (docSnap.exists()) {
+        await setDoc(newDocRef, docSnap.data());
+      } else {
+        // docSnap.data() will be undefined in this case
+        console.log("No such document!");
+    }
+
+    docRef = newDocRef;
+
+    exerciseCopied = true;
+}
+
+window.uploadFile = (jsonString, exercisePath, fileName) => {
     return new Promise((resolve, reject) => {
-        var blob = new Blob([jsonString]);
-        var storageRef = ref(storage, 'Exercises/' + exercisePath);
+        var blob;
+        if (fileName.endsWith(".jpg"))
+        {
+            const byteCharacters = atob(jsonString);
+            const byteNumbers = new Array(byteCharacters.length);
+            for (let i = 0; i < byteCharacters.length; i++) {
+                byteNumbers[i] = byteCharacters.charCodeAt(i);
+            }
+            const byteArray = new Uint8Array(byteNumbers);
+            blob = new Blob([byteArray], { type: 'image/jpeg' });
+        }
+        else
+        {
+            blob = new Blob([jsonString]);
+        }
+        var directory;
+        if (params["uid"])
+        {
+            directory = 'Exercises/userExercises/' + params["uid"] + '/';
+            if (!exerciseCopied) {
+                updateDocRef();
+                copyFireStoreDoc("Doctors/" + params["uid"] + "/Edited Exercises/" + exercisePath);
+            }
+        }
+        else
+        {
+            directory = 'Exercises/authenticatedExercises/';
+            updateDocRef();
+        }
+        var storageRef = ref(storage, directory + exercisePath + '/' + fileName);
         uploadBytes(storageRef, blob).then((snapshot) => {
+            if (fileName == "AnimationData")
+            {
+                exerciseData.animation = directory + exercisePath + "/" + fileName;
+            }
+            else if (fileName == "MediaPipeData")
+            {
+                exerciseData.mediapipeData = directory + exercisePath + "/" + fileName;
+            }
+            else if (fileName.endsWith(".jpg"))
+            {
+                getDownloadURL(ref(storage, directory + exercisePath + "/" + fileName)).then((url) => {
+                    if (fileName == "male.jpg")
+                    {
+                        exerciseData.image[0] = url;
+                    }
+                    else
+                    {
+                        exerciseData.image[1] = url;
+                    }
+                    if (exerciseData.animation != null && exerciseData.mediapipeData != null && exerciseData.image[0] != 0 && exerciseData.image[1] != 0) {
+                        
+                        console.log("uploading Data");
+                        updateFirestoreData();
+                    }
+                })
+            }        
             resolve("Uploaded exercise");
         }).catch((error) => {
             reject("Upload failed");
@@ -71,6 +253,27 @@ window.downloadFile = (path) => {
     })
 }
 
+
+window.loadAnimation = () => {
+    console.log("loading Animation");
+    window.downloadFile(exercisePathText.innerHTML).then((animationData) => {
+        window.unityInstance.SendMessage("fireBaseManager", "quickLoadAnimation", animationData);
+    })
+}
+
+var docRef;
+if (params["firestoreDoc"]) {
+    console.log("getting exercise");
+    document.getElementById("firestoreDocPath").innerHTML = params["firestoreDoc"];
+    updateDocRef();
+    window.loadAnimationFromFirestoreDoc();
+}
+
+window.pushJsonToFireStoreDoc = (jsonString) =>
+{
+    var jsonData = JSON.parse(jsonString);
+    updateDoc(docRef,jsonData);
+}
 ////////////////////////////////////AUTH Start//////////////////////////////////////////
 const loginEmailPassword = async () => {
     const loginEmail = txtEmail.value
@@ -90,19 +293,15 @@ const loginEmailPassword = async () => {
   }
   // Monitor auth state
   const monitorAuthState = async () => {
-    onAuthStateChanged(auth, user => {
-      if (user) {
-          console.log(user);
-          loadUnityInstance();
-          showApp();
-          showLoginState(user);
-  
-          hideLoginError();
-          hideLinkError();
-      }
-      else {
-          showLoginForm();
-      }
+      onAuthStateChanged(auth, user => {
+          if (user) { 
+                loadUnityInstance();
+                showApp();
+            }
+            else {
+                loadUnityInstance();
+                showApp();
+          }
     })
   }
   
@@ -111,8 +310,6 @@ const loginEmailPassword = async () => {
     await signOut(auth);
   }
   
-btnLogin.addEventListener("click", loginEmailPassword) 
-
 monitorAuthState();
   
 ////////////////////////////////////AUTH END//////////////////////////////////////////
@@ -184,6 +381,8 @@ if (/iPhone|iPad|iPod|Android/i.test(navigator.userAgent)) {
 loadingBar.style.display = "block";
 
 function loadUnityInstance() {
+    canvas.width = window.innerWidth;
+    canvas.height = window.innerHeight;
     var script = document.createElement("script");
     script.src = loaderUrl;
     script.onload = () => {
